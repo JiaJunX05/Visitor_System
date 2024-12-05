@@ -76,23 +76,38 @@ $row = $result->fetch_assoc();
     </div>
 
     <script>
-        document.getElementById('downloadPdf').addEventListener('click', function () {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+    document.getElementById('downloadPdf').addEventListener('click', function () {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
 
-            doc.text("Visitor QR Code", 20, 20);
-            doc.text("Visitor Name: <?php echo htmlspecialchars($row['name']); ?>", 20, 30);
-            doc.text("Visitor Email: <?php echo htmlspecialchars($row['email']); ?>", 20, 40);
-            doc.text("Visitor Phone: <?php echo htmlspecialchars($row['phone']); ?>", 20, 50);
-            doc.text("Visit Date: <?php echo htmlspecialchars($row['visit_date']); ?>", 20, 60);
+        // 背景
+        doc.setFillColor(240, 240, 240);
+        doc.rect(10, 10, 190, 280, 'F');
 
-            const qrImage = document.querySelector('img');
-            if (qrImage) {
-                doc.addImage(qrImage.src, 'PNG', 20, 70, 50, 50);
-            }
+        // 标题
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(0, 51, 102);
+        doc.text("Visitor QR Code", 20, 20);
+        doc.line(20, 25, 190, 25);
 
-            doc.save('visitor_qrcode.pdf');
-        });
+        // 内容
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Visitor Name: <?php echo htmlspecialchars($row['name']); ?>", 20, 40);
+        doc.text("Visitor Email: <?php echo htmlspecialchars($row['email']); ?>", 20, 50);
+        doc.text("Visitor Phone: <?php echo htmlspecialchars($row['phone']); ?>", 20, 60);
+        doc.text("Visit Date: <?php echo htmlspecialchars($row['visit_date']); ?>", 20, 70);
+
+        // QR Code
+        const qrImage = document.querySelector('img');
+        if (qrImage) {
+            doc.addImage(qrImage.src, 'PNG', 20, 90, 60, 60);
+        }
+
+        // 保存 PDF
+        doc.save('visitor_qrcode.pdf');
+    });
     </script>
 </body>
 </html>
