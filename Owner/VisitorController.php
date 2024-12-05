@@ -108,55 +108,55 @@ class VisitorController{
     //     }
     // }
 
-    // public function VerifyQRCode($scannedData) {
-    //     // 解析扫描到的数据
-    //     $data = json_decode($scannedData, true);
+    public function VerifyQRCode($scannedData) {
+        // 解析扫描到的数据
+        $data = json_decode($scannedData, true);
         
-    //     // 确保数据解析成功
-    //     if (!isset($data['visitor_code']) || !isset($data['expiration_time'])) {
-    //         return "Invalid QR Code Data";
-    //     }
+        // 确保数据解析成功
+        if (!isset($data['visitor_code']) || !isset($data['expiration_time'])) {
+            return "Invalid QR Code Data";
+        }
         
-    //     $visitor_code = $data['visitor_code'];
-    //     $expiration_time = $data['expiration_time'];
+        $visitor_code = $data['visitor_code'];
+        $expiration_time = $data['expiration_time'];
         
-    //     // 当前时间
-    //     $current_time = time();
+        // 当前时间
+        $current_time = time();
         
-    //     // 检查二维码是否过期
-    //     if ($current_time > $expiration_time) {
-    //         return "QR Code Expired";
-    //     }
+        // 检查二维码是否过期
+        if ($current_time > $expiration_time) {
+            return "QR Code Expired";
+        }
         
-    //     // 查询访客信息和 QR 码信息
-    //     $stmt = $this->conn->prepare("
-    //         SELECT v.id, v.name, v.IC, v.email, v.phone, q.generated_at, q.expires_at
-    //         FROM visitors AS v
-    //         INNER JOIN qr_codes AS q ON v.id = q.visitor_id
-    //         WHERE q.qr_code = ? AND q.expires_at > ?
-    //     ");
+        // 查询访客信息和 QR 码信息
+        $stmt = $this->conn->prepare("
+            SELECT v.id, v.name, v.IC, v.email, v.phone, q.generated_at, q.expires_at
+            FROM visitors AS v
+            INNER JOIN qr_codes AS q ON v.id = q.visitor_id
+            WHERE q.qr_code = ? AND q.expires_at > ?
+        ");
         
-    //     // 绑定参数并执行查询
-    //     $stmt->bind_param("si", $visitor_code, $current_time);
-    //     $stmt->execute();
-    //     $result = $stmt->get_result();
+        // 绑定参数并执行查询
+        $stmt->bind_param("si", $visitor_code, $current_time);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    //     if ($result->num_rows > 0) {
-    //         // 访客记录和二维码匹配
-    //         $visitor = $result->fetch_assoc();
+        if ($result->num_rows > 0) {
+            // 访客记录和二维码匹配
+            $visitor = $result->fetch_assoc();
 
-    //         // 检查访问日期是否已到
-    //         if ($current_time < strtotime($visitor['generated_at'])) {
-    //             return "Visit date not reached yet!";
-    //         }
+            // 检查访问日期是否已到
+            if ($current_time < strtotime($visitor['generated_at'])) {
+                return "Visit date not reached yet!";
+            }
 
-    //         // 返回访客信息，表示 QR Code 有效
-    //         return $visitor;
-    //     } else {
-    //         // QR Code 无效
-    //         return "QR Code Invalid";
-    //     }
-    // }
+            // 返回访客信息，表示 QR Code 有效
+            return $visitor;
+        } else {
+            // QR Code 无效
+            return "QR Code Invalid";
+        }
+    }
 
 
     public function getVisitors($owner_id) {
@@ -177,7 +177,7 @@ class VisitorController{
 
         if (!$result) {
             // 如果获取结果失败，输出错误信息并返回 false
-            echo "Execute failed: (" . $stmt->errno . ") " . $stmt->error;
+            echo "Execute failed: (" . $stmt->error . ") " . $stmt->error;
             return false;
         }
 
@@ -188,7 +188,7 @@ class VisitorController{
     public function viewQRCode($visitor_id){
         $stmt = $this->conn->prepare("SELECT * FROM visitors WHERE id = ?");
         if (!$stmt) {
-            echo "SQL prepare failed: (" . $this->conn->errno . ") " . $this->conn->error;
+            echo "SQL prepare failed: (" . $this->conn->error . ") " . $this->conn->error;
             return false;
         }
 
@@ -198,16 +198,74 @@ class VisitorController{
         $result = $stmt->get_result();
 
         if (!$result) {
-            echo "Execute failed: (" . $stmt->errno . ") " . $stmt->error;
+            echo "Execute failed: (" . $stmt->error . ") " . $stmt->error;
             return false;
         }
 
         return $result;
     }
 
+    public function getVisitorsID($visitor_id){
+        // 准备查询语句
+        $stmt = $this->conn->prepare("SELECT * FROM visitors WHERE id = ?");
+        if (!$stmt) {
+            // 如果预处理失败，输出错误信息并返回 false
+            echo "SQL prepare failed: (" . $this->conn->error . ") " . $this->conn->error;
+            return false;
+        }
+
+        // 绑定参数
+        $stmt->bind_param("i", $owner_id);
+        $stmt->execute();
+
+        // 获取查询结果
+        $result = $stmt->get_result();
+
+        if (!$result) {
+            // 如果获取结果失败，输出错误信息并返回 false
+            echo "Execute failed: (" . $stmt->error . ") " . $stmt->error;
+            return false;
+        }
+
+        // 返回查询结果
+        return $result;
+   }
+
+   public function UpdateVisitor($visitor_id, $name, $IC, $car_number_plate, $email, $phone, $visitor_code, $visit_date, $status, $owner_id, $valid_days){
+
+       // 设置二维码过期日期
+       $expiration_time = strtotime($visit_date . ' +' . $valid_days . ' days');
+
+       // QR Code 数据信息
+       $qr_data = json_encode([
+          "visitor_code" => $visitor_code
+       ]);
+
+       // 生成 QR Code
+       $qrCode = Builder::create()
+           ->writer(new PngWriter())
+           ->data($qr_data)
+           ->size(300)
+           ->margin(10)
+           ->build();
+
+       // 设置 QR Code 文件名和路径
+       $filePath = '../QR Code/' .$visitor_code. '.png';
+       $qrCode->saveToFile($filePath);
+
+       // Prepare SQL query to update the visitor's details
+        $stmt = $this->conn->prepare("UPDATE visitors SET name = ?, IC = ?, car_number_plate = ?, email = ?, phone = ?, visitor_code = ?, qr_code = ?, status = ?, visit_date = ?, owner_id = ?, valid_days = ? WHERE id = ?");
+
+        // Bind parameters to the SQL query
+        $stmt->bind_param("ssssssssssss", $name, $IC, $car_number_plate, $email, $phone, $visitor_code, $filePath, $status, $visit_date, $owner_id,  $valid_days, $visitor_id);
+
+        // Execute the query
+        if ($stmt->execute()) {
+            return true; // Successfully updated
+        } else {
+            return false; // Failed to update
+        }
+    }
 }
-
-
-
 
 ?>
